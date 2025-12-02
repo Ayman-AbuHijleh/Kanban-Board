@@ -1,0 +1,138 @@
+.board-members {
+  min-height: 100vh;
+  background-color: #f4f5f7;
+
+  &__header {
+    background-color: #0079bf;
+    color: white;
+    padding: 16px 24px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  &__header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__back-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    align-self: flex-start;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  &__title {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  &__main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    position: relative;
+  }
+
+  &__loading,
+  &__error {
+    text-align: center;
+    padding: 48px 24px;
+    color: #5e6c84;
+  }
+
+  &__error {
+    color: #c62828;
+    background-color: #ffebee;
+    border-radius: 8px;
+    padding: 24px;
+  }
+
+  &__actions {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  &__invite-btn {
+    background-color: #0079bf;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: #026aa7;
+    }
+  }
+
+  &__info {
+    margin-top: 24px;
+    padding: 16px;
+    background-color: #e3f2fd;
+    border-left: 4px solid #0079bf;
+    border-radius: 4px;
+
+    p {
+      margin: 0;
+      color: #172b4d;
+      font-size: 14px;
+    }
+  }
+
+  &__overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+
+  &__spinner {
+    background: white;
+    padding: 24px 48px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #172b4d;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@media (max-width: 768px) {
+  .board-members {
+    &__header-content {
+      padding: 0;
+    }
+
+    &__title {
+      font-size: 20px;
+    }
+
+    &__main {
+      padding: 16px;
+    }
+  }
+}

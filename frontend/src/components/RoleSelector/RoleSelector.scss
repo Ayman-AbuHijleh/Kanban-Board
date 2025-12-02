@@ -1,0 +1,36 @@
+.role-selector {
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #172b4d;
+  border: 2px solid #dfe1e6;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  min-width: 120px;
+
+  &:hover:not(:disabled) {
+    border-color: #0079bf;
+    background-color: #f4f5f7;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #0079bf;
+    box-shadow: 0 0 0 2px rgba(0, 121, 191, 0.2);
+  }
+
+  &:disabled {
+    background-color: #f4f5f7;
+    color: #a5adba;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  option {
+    padding: 8px;
+    background-color: white;
+    color: #172b4d;
+  }
+}

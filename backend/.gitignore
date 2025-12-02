@@ -1,0 +1,26 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env/
+.venv/
+
+# Environment variables
+*.env
+
+# Flask specific
+instance/
+*.pid
+
+# Logs
+*.log
+
+# IDE files
+.vscode/
+.idea/
+
+# Cache
+.cache/
