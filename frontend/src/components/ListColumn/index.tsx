@@ -1,7 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, lazy, Suspense } from "react";
+import { Droppable } from "@hello-pangea/dnd";
 import type { List } from "../../types/list";
 import { useUpdateList, useDeleteList } from "../../hooks/useBoardLists";
+import { useListCards } from "../../hooks/useCards";
+import type { Card as CardType } from "../../types/card";
+import CreateCardForm from "../CreateCardForm";
 import "./ListColumn.scss";
+
+const Card = lazy(() => import("../Card"));
+const CardModal = lazy(() => import("../CardModal"));
 
 interface ListColumnProps {
   list: List;
@@ -10,9 +17,11 @@ interface ListColumnProps {
 const ListColumn: React.FC<ListColumnProps> = ({ list }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(list.title);
+  const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
 
   const updateListMutation = useUpdateList();
   const deleteListMutation = useDeleteList();
+  const { data: cards, isLoading: cardsLoading } = useListCards(list.list_id);
 
   const handleTitleSubmit = () => {
     if (title.trim() && title !== list.title) {
@@ -71,10 +80,47 @@ const ListColumn: React.FC<ListColumnProps> = ({ list }) => {
           ×
         </button>
       </div>
-      <div className="list-column__cards">
-        {/* Cards will be added in STEP 5 */}
-        <p className="list-column__empty">No cards yet</p>
-      </div>
+      <Droppable droppableId={list.list_id}>
+        {(provided, snapshot) => (
+          <div
+            className={`list-column__cards ${
+              snapshot.isDraggingOver ? "list-column__cards--dragging-over" : ""
+            }`}
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+          >
+            {cardsLoading ? (
+              <p className="list-column__loading">Loading cards...</p>
+            ) : cards && cards.length > 0 ? (
+              <Suspense fallback={<div>Loading...</div>}>
+                {cards.map((card, index) => (
+                  <Card
+                    key={card.card_id}
+                    card={card}
+                    index={index}
+                    onClick={() => setSelectedCard(card)}
+                  />
+                ))}
+              </Suspense>
+            ) : (
+              <p className="list-column__empty">No cards yet</p>
+            )}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+
+      <CreateCardForm listId={list.list_id} />
+
+      {selectedCard && (
+        <Suspense fallback={null}>
+          <CardModal
+            card={selectedCard}
+            isOpen={!!selectedCard}
+            onClose={() => setSelectedCard(null)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

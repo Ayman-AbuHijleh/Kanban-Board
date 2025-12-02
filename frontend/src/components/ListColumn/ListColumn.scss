@@ -68,9 +68,17 @@
     flex: 1;
     overflow-y: auto;
     min-height: 20px;
+    margin-bottom: 8px;
+    transition: background-color 0.2s ease;
+
+    &--dragging-over {
+      background-color: rgba(0, 121, 191, 0.1);
+      border-radius: 4px;
+    }
   }
 
-  &__empty {
+  &__empty,
+  &__loading {
     color: #6b778c;
     font-size: 14px;
     text-align: center;
