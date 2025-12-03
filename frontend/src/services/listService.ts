@@ -34,3 +34,14 @@ export const updateList = async (
 export const deleteList = async (listId: string): Promise<void> => {
   await api.delete(`/lists/${listId}`);
 };
+
+export const moveList = async (
+  listId: string,
+  payload: { new_position: number }
+): Promise<List> => {
+  const response = await api.put<ListResponse>(
+    `/lists/${listId}/move`,
+    payload
+  );
+  return response.data.data;
+};

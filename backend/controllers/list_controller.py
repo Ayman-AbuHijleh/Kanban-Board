@@ -180,3 +180,96 @@ def delete_list(list_id):
         return jsonify({"message": "Server Error", "error": str(e)}), 500
     finally:
         session.close()
+
+
+def move_list(list_id):
+    session = Session()
+    current_user = g.current_user
+    try:
+        try:
+            list_uuid = uuid.UUID(list_id)
+        except ValueError:
+            return jsonify({"message": "Invalid list ID format"}), 400
+
+
+        data = request.json
+        if not data:
+            return jsonify({"message": "Request body is required"}), 400
+
+        new_position = data.get('new_position')
+
+        if new_position is None:
+            return jsonify({"message": "new_position is required"}), 400
+
+        try:
+            new_position = int(new_position)
+        except (ValueError, TypeError):
+            return jsonify({"message": "Invalid new_position format"}), 400
+
+
+        list_obj = session.query(List).options(
+            joinedload(List.board)
+        ).filter_by(list_id=list_uuid).first()
+
+        if not list_obj:
+            return jsonify({"message": "List not found"}), 404
+
+        board = list_obj.board
+        is_owner = board.owner_id == current_user.user_id
+        is_member = any(
+            member.user_id == current_user.user_id and member.role.value in ['EDITOR', 'ADMIN']
+            for member in board.members
+        )
+
+        if not (is_owner or is_member):
+            return jsonify({"message": "You do not have permission to move this list"}), 403
+
+        old_position = list_obj.position
+
+   
+        if old_position == new_position:
+            list_schema = ListSchema()
+            return jsonify({
+                "message": "List position unchanged",
+                "data": list_schema.dump(list_obj)
+            }), 200
+
+        if new_position > old_position:
+            lists_to_shift = session.query(List).filter(
+                List.board_id == board.board_id,
+                List.position > old_position,
+                List.position <= new_position
+            ).all()
+            for lst in lists_to_shift:
+                lst.position -= 1
+        else:
+    
+            lists_to_shift = session.query(List).filter(
+                List.board_id == board.board_id,
+                List.position >= new_position,
+                List.position < old_position
+            ).all()
+            for lst in lists_to_shift:
+                lst.position += 1
+
+        list_obj.position = new_position
+
+        session.commit()
+        cache.clear()
+        logger.info(f"List moved: {list_id} to position {new_position}")
+
+        list_schema = ListSchema()
+        return jsonify({
+            "message": "List moved successfully",
+            "data": list_schema.dump(list_obj)
+        }), 200
+
+    except ValidationError as err:
+        session.rollback()
+        return jsonify(err.messages), 400
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error moving list: {str(e)}")
+        return jsonify({"message": "Server Error", "error": str(e)}), 500
+    finally:
+        session.close()

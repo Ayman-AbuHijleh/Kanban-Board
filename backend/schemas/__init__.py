@@ -9,6 +9,7 @@ from schemas.board_schema import (
     UpdateMemberRoleSchema,
     BoardMembersResponseSchema
 )
+from schemas.card_schema import CardSchema, CreateCardSchema, UpdateCardSchema
 
 __all__ = [
     'SignupSchema',
@@ -21,5 +22,8 @@ __all__ = [
     'BoardOwnerSchema',
     'InviteMemberSchema',
     'UpdateMemberRoleSchema',
-    'BoardMembersResponseSchema'
+    'BoardMembersResponseSchema',
+    'CardSchema',
+    'CreateCardSchema',
+    'UpdateCardSchema'
 ]

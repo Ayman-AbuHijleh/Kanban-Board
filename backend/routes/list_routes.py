@@ -1,6 +1,6 @@
 from flask import Blueprint
 from utils.auth import token_required
-from controllers.list_controller import get_lists, create_list, update_list, delete_list
+from controllers.list_controller import get_lists, create_list, update_list, delete_list, move_list
 
 list_bp = Blueprint('list', __name__)
 
@@ -27,4 +27,10 @@ def update_board_list(list_id):
 @token_required
 def delete_board_list(list_id):
     return delete_list(list_id)
+
+
+@list_bp.route('/lists/<list_id>/move', methods=['PUT'])
+@token_required
+def move_board_list(list_id):
+    return move_list(list_id)
 

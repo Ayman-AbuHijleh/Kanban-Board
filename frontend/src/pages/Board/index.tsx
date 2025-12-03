@@ -1,8 +1,8 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { DragDropContext } from "@hello-pangea/dnd";
+import { DragDropContext, Droppable } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
-import { useBoardLists } from "../../hooks/useBoardLists";
+import { useBoardLists, useMoveList } from "../../hooks/useBoardLists";
 import { useMoveCard } from "../../hooks/useCards";
 import ListColumn from "../../components/ListColumn";
 import AddListButton from "../../components/AddListButton";
@@ -14,9 +14,10 @@ const Board: React.FC = () => {
 
   const { data: lists, isLoading, error } = useBoardLists(boardId || "");
   const moveCardMutation = useMoveCard();
+  const moveListMutation = useMoveList();
 
   const handleDragEnd = (result: DropResult) => {
-    const { destination, source, draggableId } = result;
+    const { destination, source, draggableId, type } = result;
 
     // No destination - dropped outside
     if (!destination) {
@@ -31,7 +32,17 @@ const Board: React.FC = () => {
       return;
     }
 
-    // Move the card
+    // Handle list drag
+    if (type === "list") {
+      moveListMutation.mutate({
+        listId: draggableId,
+        newPosition: destination.index,
+        boardId: boardId || "",
+      });
+      return;
+    }
+
+    // Handle card drag
     moveCardMutation.mutate({
       cardId: draggableId,
       newListId: destination.droppableId,
@@ -67,14 +78,23 @@ const Board: React.FC = () => {
         </button>
       </div>
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="board__lists-container">
-          <div className="board__lists">
-            {lists?.map((list) => (
-              <ListColumn key={list.list_id} list={list} />
-            ))}
-            <AddListButton boardId={boardId} />
-          </div>
-        </div>
+        <Droppable droppableId="board" type="list" direction="horizontal">
+          {(provided) => (
+            <div className="board__lists-container">
+              <div
+                className="board__lists"
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+              >
+                {lists?.map((list, index) => (
+                  <ListColumn key={list.list_id} list={list} index={index} />
+                ))}
+                {provided.placeholder}
+                <AddListButton boardId={boardId} />
+              </div>
+            </div>
+          )}
+        </Droppable>
       </DragDropContext>
     </div>
   );
