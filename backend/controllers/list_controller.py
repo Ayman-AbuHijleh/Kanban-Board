@@ -1,275 +1,190 @@
-from flask import jsonify, request, g
-from models import Board, List
-from database import Session
+from flask import request, g
+from models import List, Card
 from schemas.list_schema import ListSchema, CreateListSchema, UpdateListSchema
 from marshmallow import ValidationError
-from sqlalchemy.orm import joinedload
 import uuid
-from utils import cache, logger
+from utils.cache import cache
+from utils import (
+    logger, with_db_session,
+    success_response, parse_uuid, not_found_response, bad_request_response,
+    board_access_required, board_editor_required,
+    get_lists_by_board
+)
 
 
-def get_lists(board_id):
-    session = Session()
-    current_user = g.current_user
-    try:
-        try:
-            board_uuid = uuid.UUID(board_id)
-        except ValueError:
-            return jsonify({"message": "Invalid board ID format"}), 400
-
-        board = session.query(Board).filter_by(board_id=board_uuid).first()
-
-        if not board:
-            return jsonify({"message": "Board not found"}), 404
-
-        is_owner = board.owner_id == current_user.user_id
-        is_member = any(member.user_id == current_user.user_id for member in board.members)
-
-        if not (is_owner or is_member):
-            return jsonify({"message": "You do not have access to this board"}), 403
-
-        lists = session.query(List).filter_by(board_id=board_uuid).order_by(List.position).all()
-
-        list_schema = ListSchema(many=True)
-        return jsonify({
-            "message": "Lists retrieved successfully",
-            "data": list_schema.dump(lists)
-        }), 200
-
-    except Exception as e:
-        logger.error(f"Error fetching lists: {str(e)}")
-        return jsonify({"message": "Server Error", "error": str(e)}), 500
-    finally:
-        session.close()
-
-
-def create_list(board_id):
-    session = Session()
-    current_user = g.current_user
-    schema = CreateListSchema()
-    try:
-        try:
-            board_uuid = uuid.UUID(board_id)
-        except ValueError:
-            return jsonify({"message": "Invalid board ID format"}), 400
-
-        data = schema.load(request.json)
-        board = session.query(Board).filter_by(board_id=board_uuid).first()
-
-        if not board:
-            return jsonify({"message": "Board not found"}), 404
-
-        is_owner = board.owner_id == current_user.user_id
-        is_member = any(member.user_id == current_user.user_id and member.role.value in ['EDITOR', 'ADMIN'] for member in board.members)
-
-        if not (is_owner or is_member):
-            return jsonify({"message": "Only board owners or editors can create lists"}), 403
-
-        max_position = session.query(List).filter_by(board_id=board_uuid).count()
-        position = data.get('position', max_position)
-
-        new_list = List(
-            list_id=uuid.uuid4(),
-            board_id=board_uuid,
-            title=data['title'],
-            position=position
-        )
-
-        session.add(new_list)
-        session.commit()
-        cache.clear()
-        logger.info(f"List created: {data['title']}")
-
-        list_schema = ListSchema()
-        return jsonify({
-            "message": "List created successfully",
-            "data": list_schema.dump(new_list)
-        }), 201
-
-    except ValidationError as err:
-        session.rollback()
-        return jsonify(err.messages), 400
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error creating list: {str(e)}")
-        return jsonify({"message": "Server Error", "error": str(e)}), 500
-    finally:
-        session.close()
-
-
-def update_list(list_id):
-    session = Session()
-    current_user = g.current_user
-    schema = UpdateListSchema()
-    try:
-        try:
-            list_uuid = uuid.UUID(list_id)
-        except ValueError:
-            return jsonify({"message": "Invalid list ID format"}), 400
-
-        data = schema.load(request.json)
-        list_obj = session.query(List).options(joinedload(List.board)).filter_by(list_id=list_uuid).first()
-
-        if not list_obj:
-            return jsonify({"message": "List not found"}), 404
-
-        board = list_obj.board
-        is_owner = board.owner_id == current_user.user_id
-        is_member = any(member.user_id == current_user.user_id and member.role.value in ['EDITOR', 'ADMIN'] for member in board.members)
-
-        if not (is_owner or is_member):
-            return jsonify({"message": "Only board owners or editors can update lists"}), 403
-
-        if 'title' in data:
-            list_obj.title = data['title']
-        if 'position' in data:
-            list_obj.position = data['position']
-
-        session.commit()
-        cache.clear()
-        logger.info(f"List updated: {list_id}")
-
-        list_schema = ListSchema()
-        return jsonify({
-            "message": "List updated successfully",
-            "data": list_schema.dump(list_obj)
-        }), 200
-
-    except ValidationError as err:
-        session.rollback()
-        return jsonify(err.messages), 400
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error updating list: {str(e)}")
-        return jsonify({"message": "Server Error", "error": str(e)}), 500
-    finally:
-        session.close()
-
-
-def delete_list(list_id):
-    session = Session()
-    current_user = g.current_user
-    try:
-        try:
-            list_uuid = uuid.UUID(list_id)
-        except ValueError:
-            return jsonify({"message": "Invalid list ID format"}), 400
-
-        list_obj = session.query(List).options(joinedload(List.board)).filter_by(list_id=list_uuid).first()
-
-        if not list_obj:
-            return jsonify({"message": "List not found"}), 404
-
-        board = list_obj.board
-        is_owner = board.owner_id == current_user.user_id
-        is_member = any(member.user_id == current_user.user_id and member.role.value in ['EDITOR', 'ADMIN'] for member in board.members)
-
-        if not (is_owner or is_member):
-            return jsonify({"message": "Only board owners or editors can delete lists"}), 403
-
-        session.delete(list_obj)
-        session.commit()
-        cache.clear()
-        logger.info(f"List deleted: {list_id}")
-
-        return jsonify({"message": "List deleted successfully"}), 200
-
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error deleting list: {str(e)}")
-        return jsonify({"message": "Server Error", "error": str(e)}), 500
-    finally:
-        session.close()
-
-
-def move_list(list_id):
-    session = Session()
-    current_user = g.current_user
-    try:
-        try:
-            list_uuid = uuid.UUID(list_id)
-        except ValueError:
-            return jsonify({"message": "Invalid list ID format"}), 400
-
-
-        data = request.json
-        if not data:
-            return jsonify({"message": "Request body is required"}), 400
-
-        new_position = data.get('new_position')
-
-        if new_position is None:
-            return jsonify({"message": "new_position is required"}), 400
-
-        try:
-            new_position = int(new_position)
-        except (ValueError, TypeError):
-            return jsonify({"message": "Invalid new_position format"}), 400
-
-
-        list_obj = session.query(List).options(
-            joinedload(List.board)
-        ).filter_by(list_id=list_uuid).first()
-
-        if not list_obj:
-            return jsonify({"message": "List not found"}), 404
-
-        board = list_obj.board
-        is_owner = board.owner_id == current_user.user_id
-        is_member = any(
-            member.user_id == current_user.user_id and member.role.value in ['EDITOR', 'ADMIN']
-            for member in board.members
-        )
-
-        if not (is_owner or is_member):
-            return jsonify({"message": "You do not have permission to move this list"}), 403
-
-        old_position = list_obj.position
-
-   
-        if old_position == new_position:
-            list_schema = ListSchema()
-            return jsonify({
-                "message": "List position unchanged",
-                "data": list_schema.dump(list_obj)
-            }), 200
-
-        if new_position > old_position:
-            lists_to_shift = session.query(List).filter(
-                List.board_id == board.board_id,
-                List.position > old_position,
-                List.position <= new_position
-            ).all()
-            for lst in lists_to_shift:
-                lst.position -= 1
-        else:
+@with_db_session
+@board_access_required('board', 'board_id')
+def get_lists(session, board_id):
+    """Get all lists for a board"""
+    board_uuid, error = parse_uuid(board_id, "board ID")
+    if error:
+        return error
     
-            lists_to_shift = session.query(List).filter(
-                List.board_id == board.board_id,
-                List.position >= new_position,
-                List.position < old_position
-            ).all()
-            for lst in lists_to_shift:
-                lst.position += 1
+    lists = get_lists_by_board(session, board_uuid)
+    
+    list_schema = ListSchema(many=True)
+    return success_response(
+        "Lists retrieved successfully",
+        {"data": list_schema.dump(lists)}
+    )
 
-        list_obj.position = new_position
 
-        session.commit()
-        cache.clear()
-        logger.info(f"List moved: {list_id} to position {new_position}")
+@with_db_session
+@board_editor_required('board', 'board_id')
+def create_list(session, board_id):
+    """Create a new list on a board"""
+    schema = CreateListSchema()
+    board = g.board  # Set by decorator
+    
+    board_uuid, error = parse_uuid(board_id, "board ID")
+    if error:
+        return error
 
+    data = schema.load(request.json)
+
+    # Get the next position
+    max_position = session.query(List).filter_by(board_id=board_uuid).count()
+    position = data.get('position', max_position)
+
+    new_list = List(
+        list_id=uuid.uuid4(),
+        board_id=board_uuid,
+        title=data['title'],
+        position=position
+    )
+
+    session.add(new_list)
+    session.flush()
+    
+    cache.delete(f"user_{g.current_user.user_id}_board_{board_id}_lists")
+    logger.info(f"List created: {data['title']}")
+
+    list_schema = ListSchema()
+    return success_response(
+        "List created successfully",
+        {"data": list_schema.dump(new_list)},
+        201
+    )
+
+
+@with_db_session
+@board_editor_required('list', 'list_id')
+def update_list(session, list_id):
+    """Update a list"""
+    schema = UpdateListSchema()
+    board = g.board  # Set by decorator
+    
+    list_uuid, error = parse_uuid(list_id, "list ID")
+    if error:
+        return error
+
+    data = schema.load(request.json)
+    
+    list_obj = session.query(List).filter_by(list_id=list_uuid).first()
+    if not list_obj:
+        return not_found_response("List")
+
+    if 'title' in data:
+        list_obj.title = data['title']
+    if 'position' in data:
+        list_obj.position = data['position']
+
+    session.flush()
+    
+    cache.delete(f"user_{g.current_user.user_id}_board_{board.board_id}_lists")
+    logger.info(f"List updated: {list_id}")
+
+    list_schema = ListSchema()
+    return success_response(
+        "List updated successfully",
+        {"data": list_schema.dump(list_obj)}
+    )
+
+
+@with_db_session
+@board_editor_required('list', 'list_id')
+def delete_list(session, list_id):
+    """Delete a list"""
+    board = g.board  # Set by decorator
+    
+    list_uuid, error = parse_uuid(list_id, "list ID")
+    if error:
+        return error
+    
+    list_obj = session.query(List).filter_by(list_id=list_uuid).first()
+    if not list_obj:
+        return not_found_response("List")
+
+    session.delete(list_obj)
+    session.flush()
+    
+    cache.delete(f"user_{g.current_user.user_id}_board_{board.board_id}_lists")
+    logger.info(f"List deleted: {list_id}")
+
+    return success_response("List deleted successfully")
+
+
+@with_db_session
+@board_editor_required('list', 'list_id')
+def move_list(session, list_id):
+    """Move a list to a new position"""
+    board = g.board  # Set by decorator
+    
+    list_uuid, error = parse_uuid(list_id, "list ID")
+    if error:
+        return error
+
+    data = request.json
+    if not data or 'new_position' not in data:
+        return bad_request_response("new_position is required")
+
+    try:
+        new_position = int(data['new_position'])
+    except (ValueError, TypeError):
+        return bad_request_response("Invalid new_position format")
+
+    list_obj = session.query(List).filter_by(list_id=list_uuid).first()
+    if not list_obj:
+        return not_found_response("List")
+
+    old_position = list_obj.position
+
+    # No change
+    if old_position == new_position:
         list_schema = ListSchema()
-        return jsonify({
-            "message": "List moved successfully",
-            "data": list_schema.dump(list_obj)
-        }), 200
+        return success_response(
+            "List position unchanged",
+            {"data": list_schema.dump(list_obj)}
+        )
 
-    except ValidationError as err:
-        session.rollback()
-        return jsonify(err.messages), 400
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error moving list: {str(e)}")
-        return jsonify({"message": "Server Error", "error": str(e)}), 500
-    finally:
-        session.close()
+    # Shift positions
+    if new_position > old_position:
+        # Moving down - shift items up
+        lists_to_shift = session.query(List).filter(
+            List.board_id == board.board_id,
+            List.position > old_position,
+            List.position <= new_position
+        ).all()
+        for lst in lists_to_shift:
+            lst.position -= 1
+    else:
+        # Moving up - shift items down
+        lists_to_shift = session.query(List).filter(
+            List.board_id == board.board_id,
+            List.position >= new_position,
+            List.position < old_position
+        ).all()
+        for lst in lists_to_shift:
+            lst.position += 1
+
+    list_obj.position = new_position
+    session.flush()
+    
+    cache.delete(f"user_{g.current_user.user_id}_board_{board.board_id}_lists")
+    logger.info(f"List moved: {list_id} to position {new_position}")
+
+    list_schema = ListSchema()
+    return success_response(
+        "List moved successfully",
+        {"data": list_schema.dump(list_obj)}
+    )

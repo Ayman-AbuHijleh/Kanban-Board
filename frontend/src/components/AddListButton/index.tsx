@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useCreateList } from "../../hooks/useBoardLists";
+import { useBoardPermissions } from "../../hooks/useBoardPermissions";
 import "./AddListButton.scss";
 
 interface AddListButtonProps {
@@ -9,6 +10,9 @@ interface AddListButtonProps {
 const AddListButton: React.FC<AddListButtonProps> = ({ boardId }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [title, setTitle] = useState("");
+
+  // Get permissions for the current user
+  const { canEdit } = useBoardPermissions(boardId);
 
   const createListMutation = useCreateList();
 
@@ -34,6 +38,11 @@ const AddListButton: React.FC<AddListButtonProps> = ({ boardId }) => {
       setIsAdding(false);
     }
   };
+
+  // Only show the button if user can edit
+  if (!canEdit) {
+    return null;
+  }
 
   if (isAdding) {
     return (

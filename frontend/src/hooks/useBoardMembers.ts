@@ -56,6 +56,20 @@ export const useBoardMembers = (boardId: string) => {
     },
   });
 
+  const removeMemberMutation = useMutation({
+    mutationFn: (userId: string) => boardService.removeMember(boardId, userId),
+    onSuccess: () => {
+      setError("");
+      queryClient.invalidateQueries({ queryKey: ["boardMembers", boardId] });
+    },
+    onError: (err: any) => {
+      const errorData = err.response?.data as BoardError;
+      setError(
+        errorData?.message || "Failed to remove member. Please try again."
+      );
+    },
+  });
+
   return {
     owner: membersQuery.data?.owner as User | undefined,
     members: membersQuery.data?.members || ([] as BoardMember[]),
@@ -68,6 +82,9 @@ export const useBoardMembers = (boardId: string) => {
 
     updateRole: updateRoleMutation.mutate,
     isUpdatingRole: updateRoleMutation.isPending,
+
+    removeMember: removeMemberMutation.mutate,
+    isRemovingMember: removeMemberMutation.isPending,
 
     error,
     setError,

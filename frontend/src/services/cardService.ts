@@ -5,6 +5,8 @@ import type {
   UpdateCardPayload,
   CardsResponse,
   CardResponse,
+  CardAssignee,
+  CardAssigneeResponse,
 } from "../types/card";
 
 export const getCards = async (listId: string): Promise<Card[]> => {
@@ -44,4 +46,22 @@ export const moveCard = async (
     payload
   );
   return response.data.data;
+};
+
+export const assignUserToCard = async (
+  cardId: string,
+  userId: string
+): Promise<CardAssignee> => {
+  const response = await api.post<CardAssigneeResponse>(
+    `/cards/${cardId}/assign`,
+    { user_id: userId }
+  );
+  return response.data.data;
+};
+
+export const unassignUserFromCard = async (
+  cardId: string,
+  userId: string
+): Promise<void> => {
+  await api.delete(`/cards/${cardId}/assign/${userId}`);
 };

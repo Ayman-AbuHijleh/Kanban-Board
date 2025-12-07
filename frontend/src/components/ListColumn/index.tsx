@@ -3,6 +3,7 @@ import { Droppable, Draggable } from "@hello-pangea/dnd";
 import type { List } from "../../types/list";
 import { useUpdateList, useDeleteList } from "../../hooks/useBoardLists";
 import { useListCards } from "../../hooks/useCards";
+import { useBoardPermissions } from "../../hooks/useBoardPermissions";
 import type { Card as CardType } from "../../types/card";
 import CreateCardForm from "../CreateCardForm";
 import "./ListColumn.scss";
@@ -19,6 +20,9 @@ const ListColumn: React.FC<ListColumnProps> = ({ list, index }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(list.title);
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
+
+  // Get permissions for the current user
+  const { canEdit, canDelete } = useBoardPermissions(list.board_id);
 
   const updateListMutation = useUpdateList();
   const deleteListMutation = useDeleteList();
@@ -53,7 +57,11 @@ const ListColumn: React.FC<ListColumnProps> = ({ list, index }) => {
   };
 
   return (
-    <Draggable draggableId={list.list_id} index={index}>
+    <Draggable
+      draggableId={list.list_id}
+      index={index}
+      isDragDisabled={!canEdit}
+    >
       {(provided, snapshot) => (
         <div
           className={`list-column ${
@@ -62,7 +70,10 @@ const ListColumn: React.FC<ListColumnProps> = ({ list, index }) => {
           ref={provided.innerRef}
           {...provided.draggableProps}
         >
-          <div className="list-column__header" {...provided.dragHandleProps}>
+          <div
+            className="list-column__header"
+            {...(canEdit ? provided.dragHandleProps : {})}
+          >
             {isEditingTitle ? (
               <input
                 type="text"
@@ -76,18 +87,21 @@ const ListColumn: React.FC<ListColumnProps> = ({ list, index }) => {
             ) : (
               <h3
                 className="list-column__title"
-                onClick={() => setIsEditingTitle(true)}
+                onClick={() => canEdit && setIsEditingTitle(true)}
+                style={{ cursor: canEdit ? "pointer" : "default" }}
               >
                 {list.title}
               </h3>
             )}
-            <button
-              className="list-column__delete-btn"
-              onClick={handleDeleteList}
-              title="Delete list"
-            >
-              ×
-            </button>
+            {canDelete && (
+              <button
+                className="list-column__delete-btn"
+                onClick={handleDeleteList}
+                title="Delete list"
+              >
+                ×
+              </button>
+            )}
           </div>
           <Droppable droppableId={list.list_id} type="card">
             {(provided, snapshot) => (
@@ -110,6 +124,7 @@ const ListColumn: React.FC<ListColumnProps> = ({ list, index }) => {
                         card={card}
                         index={index}
                         onClick={() => setSelectedCard(card)}
+                        canEdit={canEdit}
                       />
                     ))}
                   </Suspense>
@@ -121,12 +136,13 @@ const ListColumn: React.FC<ListColumnProps> = ({ list, index }) => {
             )}
           </Droppable>
 
-          <CreateCardForm listId={list.list_id} />
+          {canEdit && <CreateCardForm listId={list.list_id} />}
 
           {selectedCard && (
             <Suspense fallback={null}>
               <CardModal
                 card={selectedCard}
+                boardId={list.board_id}
                 isOpen={!!selectedCard}
                 onClose={() => setSelectedCard(null)}
               />

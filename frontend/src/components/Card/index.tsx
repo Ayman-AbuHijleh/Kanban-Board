@@ -1,15 +1,23 @@
 import React from "react";
 import { Draggable } from "@hello-pangea/dnd";
 import type { Card as CardType } from "../../types/card";
+import CardLabels from "../CardLabels";
+import CardAssignees from "../CardAssignees";
 import "./Card.scss";
 
 interface CardProps {
   card: CardType;
   onClick: () => void;
   index: number;
+  canEdit?: boolean;
 }
 
-const Card: React.FC<CardProps> = ({ card, onClick, index }) => {
+const Card: React.FC<CardProps> = ({
+  card,
+  onClick,
+  index,
+  canEdit = true,
+}) => {
   const formatDueDate = (dateString?: string) => {
     if (!dateString) return null;
     const date = new Date(dateString);
@@ -36,32 +44,40 @@ const Card: React.FC<CardProps> = ({ card, onClick, index }) => {
   };
 
   return (
-    <Draggable draggableId={card.card_id} index={index}>
+    <Draggable
+      draggableId={card.card_id}
+      index={index}
+      isDragDisabled={!canEdit}
+    >
       {(provided, snapshot) => (
         <div
           className={`card ${snapshot.isDragging ? "card--dragging" : ""}`}
           onClick={onClick}
           ref={provided.innerRef}
           {...provided.draggableProps}
-          {...provided.dragHandleProps}
+          {...(canEdit ? provided.dragHandleProps : {})}
         >
+          <CardLabels labels={card.labels} compact />
           <h4 className="card__title">{card.title}</h4>
           {card.description && (
             <p className="card__description">{card.description}</p>
           )}
-          {card.due_date && (
-            <div
-              className={`card__due-date ${
-                isOverdue(card.due_date)
-                  ? "card__due-date--overdue"
-                  : isDueSoon(card.due_date)
-                  ? "card__due-date--soon"
-                  : ""
-              }`}
-            >
-              📅 {formatDueDate(card.due_date)}
-            </div>
-          )}
+          <div className="card__footer">
+            {card.due_date && (
+              <div
+                className={`card__due-date ${
+                  isOverdue(card.due_date)
+                    ? "card__due-date--overdue"
+                    : isDueSoon(card.due_date)
+                    ? "card__due-date--soon"
+                    : ""
+                }`}
+              >
+                📅 {formatDueDate(card.due_date)}
+              </div>
+            )}
+            <CardAssignees assignees={card.assignees} />
+          </div>
         </div>
       )}
     </Draggable>

@@ -8,7 +8,8 @@ from controllers.board_controller import (
 from controllers.board_member_controller import (
     invite_member,
     get_board_members,
-    update_member_role
+    update_member_role,
+    remove_member
 )
 
 __all__ = [
@@ -20,5 +21,6 @@ __all__ = [
     'delete_board',
     'invite_member',
     'get_board_members',
-    'update_member_role'
+    'update_member_role',
+    'remove_member'
 ]

@@ -1,0 +1,39 @@
+.card-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+
+  &--compact {
+    gap: 3px;
+  }
+
+  &__label {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    transition: transform 0.1s ease;
+
+    &:hover {
+      transform: scale(1.05);
+    }
+  }
+
+  &--compact &__label {
+    min-width: 40px;
+    height: 8px;
+    padding: 0;
+    border-radius: 3px;
+  }
+
+  &__name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+  }
+}

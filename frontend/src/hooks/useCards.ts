@@ -5,6 +5,8 @@ import {
   updateCard,
   deleteCard,
   moveCard,
+  assignUserToCard,
+  unassignUserFromCard,
 } from "../services/cardService";
 import type { CreateCardPayload, UpdateCardPayload, Card } from "../types/card";
 
@@ -179,6 +181,134 @@ export const useMoveCard = () => {
         queryClient.invalidateQueries({
           queryKey: ["cards", variables.newListId],
         });
+      }
+    },
+  });
+};
+
+export const useAssignUserToCard = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      cardId,
+      userId,
+    }: {
+      cardId: string;
+      userId: string;
+      listId: string;
+      userName: string;
+      userEmail: string;
+    }) => assignUserToCard(cardId, userId),
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({
+        queryKey: ["cards", variables.listId],
+      });
+
+      // Snapshot the previous value
+      const previousCards = queryClient.getQueryData<Card[]>([
+        "cards",
+        variables.listId,
+      ]);
+
+      // Optimistically update the card
+      if (previousCards) {
+        const updatedCards = previousCards.map((card) => {
+          if (card.card_id === variables.cardId) {
+            const newAssignee = {
+              id: `temp-${Date.now()}`, // Temporary ID
+              card_id: variables.cardId,
+              user_id: variables.userId,
+              user: {
+                user_id: variables.userId,
+                name: variables.userName,
+                email: variables.userEmail,
+              },
+            };
+            return {
+              ...card,
+              assignees: [...(card.assignees || []), newAssignee],
+            };
+          }
+          return card;
+        });
+        queryClient.setQueryData(["cards", variables.listId], updatedCards);
+      }
+
+      return { previousCards };
+    },
+    onSuccess: (_, variables) => {
+      // Refetch to get the real assignment ID from server
+      queryClient.invalidateQueries({ queryKey: ["cards", variables.listId] });
+    },
+    onError: (error, variables, context) => {
+      console.error("[useAssignUserToCard] Error:", error);
+      // Rollback to previous state on error
+      if (context?.previousCards) {
+        queryClient.setQueryData(
+          ["cards", variables.listId],
+          context.previousCards
+        );
+      }
+    },
+  });
+};
+
+export const useUnassignUserFromCard = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      cardId,
+      userId,
+    }: {
+      cardId: string;
+      userId: string;
+      listId: string;
+    }) => unassignUserFromCard(cardId, userId),
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: ["cards", variables.listId],
+      });
+
+      // Snapshot the previous value
+      const previousCards = queryClient.getQueryData<Card[]>([
+        "cards",
+        variables.listId,
+      ]);
+
+      // Optimistically update the card
+      if (previousCards) {
+        const updatedCards = previousCards.map((card) => {
+          if (card.card_id === variables.cardId) {
+            return {
+              ...card,
+              assignees: (card.assignees || []).filter(
+                (assignee) => assignee.user_id !== variables.userId
+              ),
+            };
+          }
+          return card;
+        });
+        queryClient.setQueryData(["cards", variables.listId], updatedCards);
+      }
+
+      return { previousCards };
+    },
+    onSuccess: (_, variables) => {
+      // Refetch to sync with server
+      queryClient.invalidateQueries({ queryKey: ["cards", variables.listId] });
+    },
+    onError: (error, variables, context) => {
+      console.error("[useUnassignUserFromCard] Error:", error);
+      // Rollback to previous state on error
+      if (context?.previousCards) {
+        queryClient.setQueryData(
+          ["cards", variables.listId],
+          context.previousCards
+        );
       }
     },
   });

@@ -39,6 +39,14 @@
     overflow: hidden;
   }
 
+  &__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
   &__due-date {
     font-size: 11px;
     color: #5e6c84;

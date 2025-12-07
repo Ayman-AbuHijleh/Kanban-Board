@@ -14,7 +14,7 @@ def init_cache(app):
         app.config["CACHE_REDIS_PORT"] = 6379
         app.config["CACHE_REDIS_DB"] = 0
         app.config["CACHE_DEFAULT_TIMEOUT"] = 300  # 5 minutes
-        app.config["CACHE_KEY_PREFIX"] = "hotel_booking_"
+        app.config["CACHE_KEY_PREFIX"] = "kanban_"
         
         # Connection pool settings for better performance
         app.config["CACHE_OPTIONS"] = {

@@ -4,7 +4,7 @@ load_dotenv()
 
 from flask import Flask
 from database import Base, engine
-from routes import auth_bp, board_bp, list_bp, card_bp
+from routes import auth_bp, board_bp, list_bp, card_bp, label_bp, comment_bp
 from config import Config
 from flask import jsonify
 from utils import init_cache, logger, limiter
@@ -24,6 +24,8 @@ def create_app():
     app.register_blueprint(board_bp, url_prefix='/api')
     app.register_blueprint(list_bp, url_prefix='/api')
     app.register_blueprint(card_bp, url_prefix='/api')
+    app.register_blueprint(label_bp, url_prefix='/api')
+    app.register_blueprint(comment_bp, url_prefix='/api')
 
 
   

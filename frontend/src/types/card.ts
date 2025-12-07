@@ -1,3 +1,18 @@
+import type { CardLabel } from "./label";
+
+export interface CardAssigneeUser {
+  user_id: string;
+  name: string;
+  email: string;
+}
+
+export interface CardAssignee {
+  id: string;
+  card_id: string;
+  user_id: string;
+  user: CardAssigneeUser;
+}
+
 export interface Card {
   card_id: string;
   list_id: string;
@@ -5,6 +20,8 @@ export interface Card {
   description?: string;
   due_date?: string;
   position: number;
+  labels?: CardLabel[];
+  assignees?: CardAssignee[];
 }
 
 export interface CreateCardPayload {
@@ -29,4 +46,9 @@ export interface CardsResponse {
 export interface CardResponse {
   message: string;
   data: Card;
+}
+
+export interface CardAssigneeResponse {
+  message: string;
+  data: CardAssignee;
 }

@@ -16,4 +16,4 @@ class List(Base):
     board_id = Column(UUID(as_uuid=True), ForeignKey("boards.board_id"), nullable=False)
 
     board = relationship("Board", back_populates="lists")
-    cards = relationship("Card", back_populates="list")
+    cards = relationship("Card", back_populates="list", cascade="all, delete-orphan")

@@ -17,6 +17,6 @@ class Card(Base):
     list_id = Column(UUID(as_uuid=True), ForeignKey("lists.list_id"), nullable=False)
 
     list = relationship("List", back_populates="cards")
-    comments = relationship("Comment", back_populates="card")
-    assignees = relationship("CardAssignee", back_populates="card")
-    labels = relationship("CardLabel", back_populates="card")
+    comments = relationship("Comment", back_populates="card", cascade="all, delete-orphan")
+    assignees = relationship("CardAssignee", back_populates="card", cascade="all, delete-orphan")
+    labels = relationship("CardLabel", back_populates="card", cascade="all, delete-orphan")

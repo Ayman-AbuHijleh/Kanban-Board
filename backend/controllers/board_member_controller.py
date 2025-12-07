@@ -1,176 +1,160 @@
-from flask import jsonify, request, g
+from flask import request, g
 from models import Board, BoardMember, User
 from models.enums import BoardRole
-from database import Session
 from schemas.board_schema import InviteMemberSchema, UpdateMemberRoleSchema, BoardMemberSchema, BoardMembersResponseSchema
 from marshmallow import ValidationError
-from sqlalchemy.orm import joinedload
 import uuid
-from utils import cache, logger
+from utils.cache import cache
+from utils import (
+    logger, with_db_session,
+    success_response, parse_uuid, not_found_response, bad_request_response,
+    board_access_required, board_admin_required,
+    get_board_with_relations, get_board_member_with_user
+)
 
 
-def invite_member(board_id):
-    session = Session()
-    current_user = g.current_user
+@with_db_session
+@board_admin_required('board_id')
+def invite_member(session, board_id):
+    """Invite a member to a board (admins and owner only)"""
     schema = InviteMemberSchema()
-    try:
-        try:
-            board_uuid = uuid.UUID(board_id)
-        except ValueError:
-            return jsonify({"message": "Invalid board ID format"}), 400
+    board = g.board  # Set by decorator
+    
+    board_uuid, error = parse_uuid(board_id, "board ID")
+    if error:
+        return error
 
-        data = schema.load(request.json)
-        board = session.query(Board).filter_by(board_id=board_uuid).first()
+    data = schema.load(request.json)
 
-        if not board:
-            return jsonify({"message": "Board not found"}), 404
+    user_to_invite = session.query(User).filter_by(email=data['email']).first()
 
-        if board.owner_id != current_user.user_id:
-            return jsonify({"message": "Only the board owner can invite members"}), 403
+    if not user_to_invite:
+        return not_found_response("User with this email")
 
-        user_to_invite = session.query(User).filter_by(email=data['email']).first()
+    if user_to_invite.user_id == board.owner_id:
+        return bad_request_response("Board owner is already part of the board")
 
-        if not user_to_invite:
-            return jsonify({"message": "User with this email does not exist"}), 404
+    existing_member = session.query(BoardMember).filter_by(
+        board_id=board_uuid,
+        user_id=user_to_invite.user_id
+    ).first()
 
-        if user_to_invite.user_id == board.owner_id:
-            return jsonify({"message": "Board owner is already part of the board"}), 400
+    if existing_member:
+        return bad_request_response("User is already a member of this board")
 
-        existing_member = session.query(BoardMember).filter_by(
-            board_id=board_uuid,
-            user_id=user_to_invite.user_id
-        ).first()
+    new_member = BoardMember(
+        member_id=uuid.uuid4(),
+        board_id=board_uuid,
+        user_id=user_to_invite.user_id,
+        role=BoardRole.VIEWER
+    )
 
-        if existing_member:
-            return jsonify({"message": "User is already a member of this board"}), 400
+    session.add(new_member)
+    session.flush()
+    
+    cache.delete(f"user_{g.current_user.user_id}_board_{board_id}_members")
+    logger.info(f"Member invited to board: {data['email']}")
 
-        new_member = BoardMember(
-            member_id=uuid.uuid4(),
-            board_id=board_uuid,
-            user_id=user_to_invite.user_id,
-            role=BoardRole.VIEWER
-        )
+    member_with_user = get_board_member_with_user(session, new_member.member_id)
 
-        session.add(new_member)
-        session.commit()
-        cache.clear()
-        logger.info(f"Member invited to board: {data['email']}")
-
-        member_with_user = session.query(BoardMember).options(
-            joinedload(BoardMember.user)
-        ).filter_by(member_id=new_member.member_id).first()
-
-        member_schema = BoardMemberSchema()
-        return jsonify({
-            "message": "Member invited successfully",
-            "member": member_schema.dump(member_with_user)
-        }), 201
-
-    except ValidationError as err:
-        session.rollback()
-        return jsonify(err.messages), 400
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error inviting member: {str(e)}")
-        return jsonify({"message": "Server Error", "error": str(e)}), 500
-    finally:
-        session.close()
+    member_schema = BoardMemberSchema()
+    return success_response(
+        "Member invited successfully",
+        {"member": member_schema.dump(member_with_user)},
+        201
+    )
 
 
-def get_board_members(board_id):
-    session = Session()
-    current_user = g.current_user
-    try:
-        try:
-            board_uuid = uuid.UUID(board_id)
-        except ValueError:
-            return jsonify({"message": "Invalid board ID format"}), 400
+@with_db_session
+@board_access_required('board', 'board_id')
+def get_board_members(session, board_id):
+    """Get all members of a board"""
+    board = g.board  # Set by decorator (already has owner and members loaded)
+    
+    response_schema = BoardMembersResponseSchema()
+    response_data = response_schema.dump({
+        'owner': board.owner,
+        'members': board.members
+    })
 
-        board = session.query(Board).options(
-            joinedload(Board.owner),
-            joinedload(Board.members).joinedload(BoardMember.user)
-        ).filter_by(board_id=board_uuid).first()
-
-        if not board:
-            return jsonify({"message": "Board not found"}), 404
-
-        is_owner = board.owner_id == current_user.user_id
-        is_member = any(member.user_id == current_user.user_id for member in board.members)
-
-        if not (is_owner or is_member):
-            return jsonify({"message": "You do not have access to this board"}), 403
-
-        response_schema = BoardMembersResponseSchema()
-        response_data = response_schema.dump({
-            'owner': board.owner,
-            'members': board.members
-        })
-
-        return jsonify({
-            "message": "Board members retrieved successfully",
-            **response_data
-        }), 200
-
-    except Exception as e:
-        logger.error(f"Error fetching board members: {str(e)}")
-        return jsonify({"message": "Server Error", "error": str(e)}), 500
-    finally:
-        session.close()
+    return success_response(
+        "Board members retrieved successfully",
+        response_data
+    )
 
 
-def update_member_role(board_id, user_id):
-    session = Session()
-    current_user = g.current_user
+@with_db_session
+@board_admin_required('board_id')
+def update_member_role(session, board_id, user_id):
+    """Update a member's role (admins and owner only)"""
     schema = UpdateMemberRoleSchema()
-    try:
-        try:
-            board_uuid = uuid.UUID(board_id)
-            user_uuid = uuid.UUID(user_id)
-        except ValueError:
-            return jsonify({"message": "Invalid ID format"}), 400
+    board = g.board  # Set by decorator
+    
+    board_uuid, error = parse_uuid(board_id, "board ID")
+    if error:
+        return error
+    
+    user_uuid, error = parse_uuid(user_id, "user ID")
+    if error:
+        return error
 
-        data = schema.load(request.json)
-        board = session.query(Board).filter_by(board_id=board_uuid).first()
+    data = schema.load(request.json)
 
-        if not board:
-            return jsonify({"message": "Board not found"}), 404
+    if user_uuid == board.owner_id:
+        return bad_request_response("Cannot change the board owner's role")
 
-        if board.owner_id != current_user.user_id:
-            return jsonify({"message": "Only the board owner can update member roles"}), 403
+    member = session.query(BoardMember).filter_by(
+        board_id=board_uuid,
+        user_id=user_uuid
+    ).first()
 
-        if user_uuid == board.owner_id:
-            return jsonify({"message": "Cannot change the board owner's role"}), 400
+    if not member:
+        return not_found_response("Member in this board")
 
-        member = session.query(BoardMember).filter_by(
-            board_id=board_uuid,
-            user_id=user_uuid
-        ).first()
+    member.role = BoardRole[data['role'].upper()]
+    session.flush()
+    
+    cache.delete(f"user_{g.current_user.user_id}_board_{board_id}_members")
+    logger.info(f"Member role updated: {data['role']}")
 
-        if not member:
-            return jsonify({"message": "Member not found in this board"}), 404
+    member_with_user = get_board_member_with_user(session, member.member_id)
 
-        member.role = BoardRole[data['role'].upper()]
-        session.commit()
-        session.refresh(member)
-        cache.clear()
-        logger.info(f"Member role updated: {data['role']}")
+    member_schema = BoardMemberSchema()
+    return success_response(
+        "Member role updated successfully",
+        {"member": member_schema.dump(member_with_user)}
+    )
 
-        member_with_user = session.query(BoardMember).options(
-            joinedload(BoardMember.user)
-        ).filter_by(member_id=member.member_id).first()
 
-        member_schema = BoardMemberSchema()
-        return jsonify({
-            "message": "Member role updated successfully",
-            "member": member_schema.dump(member_with_user)
-        }), 200
+@with_db_session
+@board_admin_required('board_id')
+def remove_member(session, board_id, user_id):
+    """Remove a member from a board (admins and owner only)"""
+    board = g.board  # Set by decorator
+    
+    board_uuid, error = parse_uuid(board_id, "board ID")
+    if error:
+        return error
+    
+    user_uuid, error = parse_uuid(user_id, "user ID")
+    if error:
+        return error
 
-    except ValidationError as err:
-        session.rollback()
-        return jsonify(err.messages), 400
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error updating member role: {str(e)}")
-        return jsonify({"message": "Server Error", "error": str(e)}), 500
-    finally:
-        session.close()
+    if user_uuid == board.owner_id:
+        return bad_request_response("Cannot remove the board owner")
+
+    member = session.query(BoardMember).filter_by(
+        board_id=board_uuid,
+        user_id=user_uuid
+    ).first()
+
+    if not member:
+        return not_found_response("Member in this board")
+
+    session.delete(member)
+    session.flush()
+    
+    cache.delete(f"user_{g.current_user.user_id}_board_{board_id}_members")
+    logger.info(f"Member removed from board: {user_uuid}")
+
+    return success_response("Member removed successfully")

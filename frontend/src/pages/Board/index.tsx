@@ -4,6 +4,7 @@ import { DragDropContext, Droppable } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
 import { useBoardLists, useMoveList } from "../../hooks/useBoardLists";
 import { useMoveCard } from "../../hooks/useCards";
+import { useBoardPermissions } from "../../hooks/useBoardPermissions";
 import ListColumn from "../../components/ListColumn";
 import AddListButton from "../../components/AddListButton";
 import "./Board.scss";
@@ -16,7 +17,15 @@ const Board: React.FC = () => {
   const moveCardMutation = useMoveCard();
   const moveListMutation = useMoveList();
 
+  // Get permissions for the current user
+  const { canEdit, role } = useBoardPermissions(boardId);
+
   const handleDragEnd = (result: DropResult) => {
+    // Prevent drag and drop if user doesn't have edit permissions
+    if (!canEdit) {
+      return;
+    }
+
     const { destination, source, draggableId, type } = result;
 
     // No destination - dropped outside
@@ -69,7 +78,9 @@ const Board: React.FC = () => {
   return (
     <div className="board">
       <div className="board__header">
-        <h1 className="board__title">Board</h1>
+        <h1 className="board__title">
+          Board {role && <span className="board__role">({role})</span>}
+        </h1>
         <button
           className="board__back-btn"
           onClick={() => navigate("/dashboard")}

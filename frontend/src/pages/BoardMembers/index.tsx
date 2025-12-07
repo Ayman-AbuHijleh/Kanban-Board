@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useBoardMembers } from "../../hooks/useBoardMembers";
+import { useBoardPermissions } from "../../hooks/useBoardPermissions";
 import { getCurrentUser } from "../../services/authService";
 import InviteMemberModal from "../../components/InviteMemberModal";
 import MembersTable from "../../components/MembersTable";
@@ -20,9 +21,13 @@ const BoardMembers: React.FC = () => {
     isInviting,
     updateRole,
     isUpdatingRole,
+    removeMember,
+    isRemovingMember,
     error,
     setError,
   } = useBoardMembers(boardId || "");
+
+  const { canManageMembers, isOwner } = useBoardPermissions(boardId);
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
@@ -30,8 +35,6 @@ const BoardMembers: React.FC = () => {
     navigate("/dashboard");
     return null;
   }
-
-  const isOwner = owner?.user_id === currentUser?.user_id;
 
   const handleInviteMember = (email: string) => {
     inviteMember(
@@ -49,6 +52,16 @@ const BoardMembers: React.FC = () => {
     newRole: "admin" | "editor" | "viewer"
   ) => {
     updateRole({ userId, payload: { role: newRole } });
+  };
+
+  const handleRemoveMember = (userId: string) => {
+    if (
+      window.confirm(
+        "Are you sure you want to remove this member from the board?"
+      )
+    ) {
+      removeMember(userId);
+    }
   };
 
   const handleBackToDashboard = () => {
@@ -88,7 +101,7 @@ const BoardMembers: React.FC = () => {
         {!isLoading && !isError && owner && (
           <>
             <div className="board-members__actions">
-              {isOwner && (
+              {canManageMembers && (
                 <button
                   className="board-members__invite-btn"
                   onClick={() => setIsInviteModalOpen(true)}
@@ -102,13 +115,18 @@ const BoardMembers: React.FC = () => {
               owner={owner}
               members={members}
               isOwner={isOwner}
+              isAdmin={canManageMembers}
               onRoleChange={handleRoleChange}
-              isUpdating={isUpdatingRole}
+              onRemoveMember={handleRemoveMember}
+              isUpdating={isUpdatingRole || isRemovingMember}
             />
 
-            {!isOwner && (
+            {!canManageMembers && (
               <div className="board-members__info">
-                <p>Only the board owner can invite members or change roles.</p>
+                <p>
+                  Only board admins and the owner can invite members or change
+                  roles.
+                </p>
               </div>
             )}
           </>
@@ -122,7 +140,7 @@ const BoardMembers: React.FC = () => {
       </main>
 
       {/* Invite Member Modal */}
-      {isOwner && (
+      {canManageMembers && (
         <InviteMemberModal
           isOpen={isInviteModalOpen}
           onClose={handleCloseModal}

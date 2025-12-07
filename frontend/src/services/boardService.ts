@@ -69,3 +69,10 @@ export const updateMemberRole = async (
   );
   return response.data.member;
 };
+
+export const removeMember = async (
+  boardId: string,
+  userId: string
+): Promise<void> => {
+  await api.delete(`/boards/${boardId}/members/${userId}`);
+};

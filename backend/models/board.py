@@ -14,6 +14,6 @@ class Board(Base):
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
 
     owner = relationship("User", back_populates="boards_owned")
-    members = relationship("BoardMember", back_populates="board")
-    lists = relationship("List", back_populates="board")
-    labels = relationship("Label", back_populates="board")
+    members = relationship("BoardMember", back_populates="board", cascade="all, delete-orphan")
+    lists = relationship("List", back_populates="board", cascade="all, delete-orphan")
+    labels = relationship("Label", back_populates="board", cascade="all, delete-orphan")
