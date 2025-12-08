@@ -1,4 +1,5 @@
 import api from "./api";
+import websocketService from "./websocketService";
 import type {
   LoginCredentials,
   SignupCredentials,
@@ -13,6 +14,8 @@ export const signup = async (
   if (response.data.token) {
     localStorage.setItem("token", response.data.token);
     localStorage.setItem("user", JSON.stringify(response.data.user));
+    // Connect to WebSocket after successful signup
+    websocketService.connect(response.data.token);
   }
 
   return response.data;
@@ -26,6 +29,8 @@ export const login = async (
   if (response.data.token) {
     localStorage.setItem("token", response.data.token);
     localStorage.setItem("user", JSON.stringify(response.data.user));
+    // Connect to WebSocket after successful login
+    websocketService.connect(response.data.token);
   }
 
   return response.data;
@@ -34,6 +39,8 @@ export const login = async (
 export const logout = (): void => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
+  // Disconnect WebSocket on logout
+  websocketService.disconnect();
 };
 
 export const getCurrentUser = () => {

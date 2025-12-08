@@ -93,7 +93,6 @@ export const useMoveList = () => {
 
         if (listToMove) {
           const updatedLists = [...previousLists];
-          const oldPosition = listToMove.position;
 
           // Remove list from old position
           const listIndex = updatedLists.findIndex((l) => l.list_id === listId);

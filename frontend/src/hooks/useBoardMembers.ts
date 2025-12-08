@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as boardService from "../services/boardService";
 import type {
   BoardMember,
-  GetBoardMembersResponse,
   InviteMemberPayload,
   UpdateRolePayload,
   BoardError,

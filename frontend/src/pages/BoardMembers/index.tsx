@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useBoardMembers } from "../../hooks/useBoardMembers";
 import { useBoardPermissions } from "../../hooks/useBoardPermissions";
-import { getCurrentUser } from "../../services/authService";
 import InviteMemberModal from "../../components/InviteMemberModal";
 import MembersTable from "../../components/MembersTable";
 import "./BoardMembers.scss";
@@ -10,7 +9,6 @@ import "./BoardMembers.scss";
 const BoardMembers: React.FC = () => {
   const { boardId } = useParams<{ boardId: string }>();
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
 
   const {
     owner,

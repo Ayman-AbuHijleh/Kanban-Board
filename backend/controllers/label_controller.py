@@ -8,7 +8,8 @@ from utils import (
     logger, with_db_session,
     success_response, parse_uuid, not_found_response, bad_request_response,
     board_access_required, board_editor_required,
-    get_labels_by_board, get_label_with_board
+    get_labels_by_board, get_label_with_board,
+    emit_to_board
 )
 from sqlalchemy.orm import joinedload
 
@@ -174,11 +175,24 @@ def add_label_to_card(session, card_id, label_id):
     ).filter_by(id=card_label.id).first()
 
     card_label_schema = CardLabelSchema()
-    return success_response(
+    card_label_data = card_label_schema.dump(card_label_with_label)
+    
+    response = success_response(
         "Label added to card successfully",
-        {"data": card_label_schema.dump(card_label_with_label)},
+        {"data": card_label_data},
         201
     )
+    
+    # Emit WebSocket event (safe)
+    try:
+        emit_to_board(board.board_id, 'card:label_added', {
+            'card_id': card_id,
+            'label': card_label_data
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+    
+    return response
 
 
 @with_db_session
@@ -213,4 +227,15 @@ def remove_label_from_card(session, card_id, label_id):
     cache.delete(f"user_{g.current_user.user_id}_card_{card_id}_comments")
     logger.info(f"Label removed from card {card.title}")
 
-    return success_response("Label removed from card successfully")
+    response = success_response("Label removed from card successfully")
+    
+    # Emit WebSocket event (safe)
+    try:
+        emit_to_board(board.board_id, 'card:label_removed', {
+            'card_id': card_id,
+            'label_id': label_id
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+
+    return response

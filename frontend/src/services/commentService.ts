@@ -21,3 +21,10 @@ export const createComment = async (
   );
   return response.data.data;
 };
+
+export const deleteComment = async (
+  cardId: string,
+  commentId: string
+): Promise<void> => {
+  await api.delete(`/cards/${cardId}/comments/${commentId}`);
+};

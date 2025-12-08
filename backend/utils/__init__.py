@@ -2,6 +2,7 @@ from utils.auth import token_required
 from utils.cache import cache, init_cache
 from utils.logger import logger
 from utils.limiter import limiter
+from utils.websocket import socketio, emit_to_board
 from utils.helpers import (
     with_db_session,
     board_access_required,
@@ -32,6 +33,8 @@ __all__ = [
     'init_cache',
     'logger',
     'limiter',
+    'socketio',
+    'emit_to_board',
     'with_db_session',
     'board_access_required',
     'board_editor_required',

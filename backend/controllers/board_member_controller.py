@@ -9,7 +9,8 @@ from utils import (
     logger, with_db_session,
     success_response, parse_uuid, not_found_response, bad_request_response,
     board_access_required, board_admin_required,
-    get_board_with_relations, get_board_member_with_user
+    get_board_with_relations, get_board_member_with_user,
+    emit_to_board
 )
 
 
@@ -58,11 +59,23 @@ def invite_member(session, board_id):
     member_with_user = get_board_member_with_user(session, new_member.member_id)
 
     member_schema = BoardMemberSchema()
-    return success_response(
+    member_data = member_schema.dump(member_with_user)
+    
+    response = success_response(
         "Member invited successfully",
-        {"member": member_schema.dump(member_with_user)},
+        {"member": member_data},
         201
     )
+    
+    # Emit WebSocket event (safe)
+    try:
+        emit_to_board(board.board_id, 'board:member_added', {
+            'member': member_data
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+    
+    return response
 
 
 @with_db_session
@@ -120,10 +133,22 @@ def update_member_role(session, board_id, user_id):
     member_with_user = get_board_member_with_user(session, member.member_id)
 
     member_schema = BoardMemberSchema()
-    return success_response(
+    member_data = member_schema.dump(member_with_user)
+    
+    response = success_response(
         "Member role updated successfully",
-        {"member": member_schema.dump(member_with_user)}
+        {"member": member_data}
     )
+    
+    # Emit WebSocket event (safe)
+    try:
+        emit_to_board(board.board_id, 'board:member_role_updated', {
+            'member': member_data
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+    
+    return response
 
 
 @with_db_session
@@ -157,4 +182,14 @@ def remove_member(session, board_id, user_id):
     cache.delete(f"user_{g.current_user.user_id}_board_{board_id}_members")
     logger.info(f"Member removed from board: {user_uuid}")
 
-    return success_response("Member removed successfully")
+    response = success_response("Member removed successfully")
+    
+    # Emit WebSocket event (safe)
+    try:
+        emit_to_board(board.board_id, 'board:member_removed', {
+            'user_id': user_id
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+
+    return response

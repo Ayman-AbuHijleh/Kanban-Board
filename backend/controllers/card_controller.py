@@ -8,7 +8,8 @@ from utils import (
     logger, with_db_session,
     success_response, parse_uuid, not_found_response, bad_request_response,
     board_access_required, board_editor_required,
-    get_cards_by_list, get_card_with_relations
+    get_cards_by_list, get_card_with_relations,
+    emit_to_board
 )
 
 
@@ -64,11 +65,24 @@ def create_card(session, list_id):
     new_card = get_card_with_relations(session, new_card.card_id)
 
     card_schema = CardSchema()
-    return success_response(
+    card_data = card_schema.dump(new_card)
+    
+    response = success_response(
         "Card created successfully",
-        {"data": card_schema.dump(new_card)},
+        {"data": card_data},
         201
     )
+    
+    # Emit WebSocket event (safe - won't break operation if it fails)
+    try:
+        emit_to_board(board.board_id, 'card:created', {
+            'card': card_data,
+            'list_id': str(list_uuid)
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+    
+    return response
 
 
 @with_db_session
@@ -161,10 +175,23 @@ def update_card(session, card_id):
     card = get_card_with_relations(session, card.card_id)
 
     card_schema = CardSchema()
-    return success_response(
+    card_data = card_schema.dump(card)
+    
+    response = success_response(
         "Card updated successfully",
-        {"data": card_schema.dump(card)}
+        {"data": card_data}
     )
+    
+    # Emit WebSocket event (safe - won't break operation if it fails)
+    try:
+        emit_to_board(board.board_id, 'card:updated', {
+            'card': card_data,
+            'old_list_id': str(old_list_id)
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+    
+    return response
 
 
 @with_db_session
@@ -189,13 +216,25 @@ def delete_card(session, card_id):
     for c in cards_to_reorder:
         c.position -= 1
 
+    list_id = str(card.list_id)
     session.delete(card)
     session.flush()
     
     cache.delete(f"user_{g.current_user.user_id}_list_{card.list_id}_cards")
     logger.info(f"Card deleted: {card_id}")
 
-    return success_response("Card deleted successfully")
+    response = success_response("Card deleted successfully")
+    
+    # Emit WebSocket event (safe - won't break operation if it fails)
+    try:
+        emit_to_board(board.board_id, 'card:deleted', {
+            'card_id': card_id,
+            'list_id': list_id
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+
+    return response
 
 
 @with_db_session
@@ -293,10 +332,26 @@ def move_card(session, card_id):
     card = get_card_with_relations(session, card.card_id)
 
     card_schema = CardSchema()
-    return success_response(
+    card_data = card_schema.dump(card)
+    
+    # Prepare response before WebSocket emit
+    response = success_response(
         "Card moved successfully",
-        {"data": card_schema.dump(card)}
+        {"data": card_data}
     )
+    
+    # Emit WebSocket event (in try-except to prevent it from breaking the operation)
+    try:
+        emit_to_board(board.board_id, 'card:moved', {
+            'card': card_data,
+            'old_list_id': str(old_list_id),
+            'new_list_id': str(new_list_uuid),
+            'new_position': new_position
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+    
+    return response
 
 
 @with_db_session
@@ -354,11 +409,24 @@ def assign_user_to_card(session, card_id):
     ).filter_by(id=new_assignment.id).first()
 
     assignee_schema = CardAssigneeSchema()
-    return success_response(
+    assignee_data = assignee_schema.dump(assignment_with_user)
+    
+    response = success_response(
         "User assigned to card successfully",
-        {"data": assignee_schema.dump(assignment_with_user)},
+        {"data": assignee_data},
         201
     )
+    
+    # Emit WebSocket event (safe - won't break operation if it fails)
+    try:
+        emit_to_board(board.board_id, 'card:assignee_added', {
+            'card_id': card_id,
+            'assignee': assignee_data
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+    
+    return response
 
 
 @with_db_session
@@ -391,4 +459,15 @@ def unassign_user_from_card(session, card_id, user_id):
     cache.delete(f"user_{g.current_user.user_id}_card_{card_id}_comments")
     logger.info(f"User {user_id} unassigned from card {card_id}")
 
-    return success_response("User unassigned from card successfully")
+    response = success_response("User unassigned from card successfully")
+    
+    # Emit WebSocket event (safe - won't break operation if it fails)
+    try:
+        emit_to_board(board.board_id, 'card:assignee_removed', {
+            'card_id': card_id,
+            'user_id': user_id
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+
+    return response

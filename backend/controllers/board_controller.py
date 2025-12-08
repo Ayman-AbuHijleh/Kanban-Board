@@ -7,7 +7,8 @@ from utils import (
     logger, with_db_session,
     success_response, parse_uuid,
     board_owner_required,
-    get_board_with_relations
+    get_board_with_relations,
+    emit_to_board
 )
 from sqlalchemy.orm import joinedload
 
@@ -96,10 +97,22 @@ def update_board(session, board_id):
     ).filter_by(board_id=board.board_id).first()
 
     board_schema = BoardSchema()
-    return success_response(
+    board_data = board_schema.dump(board_with_relations)
+    
+    response = success_response(
         "Board updated successfully",
-        {"board": board_schema.dump(board_with_relations)}
+        {"board": board_data}
     )
+    
+    # Emit WebSocket event (safe)
+    try:
+        emit_to_board(board.board_id, 'board:updated', {
+            'board': board_data
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+    
+    return response
 
 
 @with_db_session

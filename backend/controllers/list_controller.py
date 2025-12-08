@@ -8,7 +8,8 @@ from utils import (
     logger, with_db_session,
     success_response, parse_uuid, not_found_response, bad_request_response,
     board_access_required, board_editor_required,
-    get_lists_by_board
+    get_lists_by_board,
+    emit_to_board
 )
 
 
@@ -60,11 +61,23 @@ def create_list(session, board_id):
     logger.info(f"List created: {data['title']}")
 
     list_schema = ListSchema()
-    return success_response(
+    list_data = list_schema.dump(new_list)
+    
+    response = success_response(
         "List created successfully",
-        {"data": list_schema.dump(new_list)},
+        {"data": list_data},
         201
     )
+    
+    # Emit WebSocket event (safe)
+    try:
+        emit_to_board(board.board_id, 'list:created', {
+            'list': list_data
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+    
+    return response
 
 
 @with_db_session
@@ -95,10 +108,22 @@ def update_list(session, list_id):
     logger.info(f"List updated: {list_id}")
 
     list_schema = ListSchema()
-    return success_response(
+    list_data = list_schema.dump(list_obj)
+    
+    response = success_response(
         "List updated successfully",
-        {"data": list_schema.dump(list_obj)}
+        {"data": list_data}
     )
+    
+    # Emit WebSocket event (safe)
+    try:
+        emit_to_board(board.board_id, 'list:updated', {
+            'list': list_data
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+    
+    return response
 
 
 @with_db_session
@@ -121,7 +146,17 @@ def delete_list(session, list_id):
     cache.delete(f"user_{g.current_user.user_id}_board_{board.board_id}_lists")
     logger.info(f"List deleted: {list_id}")
 
-    return success_response("List deleted successfully")
+    response = success_response("List deleted successfully")
+    
+    # Emit WebSocket event (safe)
+    try:
+        emit_to_board(board.board_id, 'list:deleted', {
+            'list_id': list_id
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+
+    return response
 
 
 @with_db_session
@@ -184,7 +219,21 @@ def move_list(session, list_id):
     logger.info(f"List moved: {list_id} to position {new_position}")
 
     list_schema = ListSchema()
-    return success_response(
+    list_data = list_schema.dump(list_obj)
+    
+    response = success_response(
         "List moved successfully",
-        {"data": list_schema.dump(list_obj)}
+        {"data": list_data}
     )
+    
+    # Emit WebSocket event (safe)
+    try:
+        emit_to_board(board.board_id, 'list:moved', {
+            'list': list_data,
+            'old_position': old_position,
+            'new_position': new_position
+        })
+    except Exception as e:
+        logger.error(f"Failed to emit WebSocket event: {e}")
+    
+    return response

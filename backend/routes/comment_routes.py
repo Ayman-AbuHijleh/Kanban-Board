@@ -2,7 +2,8 @@ from flask import Blueprint
 from utils.auth import token_required
 from controllers.comment_controller import (
     get_card_comments,
-    create_comment
+    create_comment,
+    delete_comment
 )
 
 comment_bp = Blueprint('comment', __name__)
@@ -18,3 +19,9 @@ def get_comments(card_id):
 @token_required
 def add_comment(card_id):
     return create_comment(card_id=card_id)
+
+
+@comment_bp.route('/cards/<card_id>/comments/<comment_id>', methods=['DELETE'])
+@token_required
+def remove_comment(card_id, comment_id):
+    return delete_comment(card_id=card_id, comment_id=comment_id)

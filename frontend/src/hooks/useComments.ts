@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCardComments, createComment } from "../services/commentService";
+import {
+  getCardComments,
+  createComment,
+  deleteComment,
+} from "../services/commentService";
 import type { CreateCommentPayload, Comment } from "../types/comment";
 
 export const useCardComments = (cardId: string) => {
@@ -75,6 +79,62 @@ export const useCreateComment = () => {
     },
     onError: (error: any, variables, context) => {
       console.error("Error creating comment:", error);
+      // Rollback to previous state on error
+      if (context?.previousComments) {
+        queryClient.setQueryData(
+          ["comments", variables.cardId],
+          context.previousComments
+        );
+      }
+    },
+  });
+};
+
+export const useDeleteComment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      cardId,
+      commentId,
+    }: {
+      cardId: string;
+      commentId: string;
+    }) => {
+      console.log("Deleting comment:", { cardId, commentId });
+      return deleteComment(cardId, commentId);
+    },
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: ["comments", variables.cardId],
+      });
+
+      // Snapshot the previous value
+      const previousComments = queryClient.getQueryData<Comment[]>([
+        "comments",
+        variables.cardId,
+      ]);
+
+      // Optimistically remove the comment
+      if (previousComments) {
+        const newComments = previousComments.filter(
+          (comment) => comment.comment_id !== variables.commentId
+        );
+        queryClient.setQueryData(["comments", variables.cardId], newComments);
+      }
+
+      return { previousComments };
+    },
+    onSuccess: (_data, variables) => {
+      console.log("Comment deleted successfully");
+      // Refetch to sync with server
+      queryClient.invalidateQueries({
+        queryKey: ["comments", variables.cardId],
+      });
+    },
+    onError: (error: any, variables, context) => {
+      console.error("Error deleting comment:", error);
       // Rollback to previous state on error
       if (context?.previousComments) {
         queryClient.setQueryData(
