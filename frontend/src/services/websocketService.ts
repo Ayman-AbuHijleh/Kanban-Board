@@ -1,5 +1,5 @@
 import { io, Socket } from "socket.io-client";
-import { VITE_API_URL } from "./config";
+import { VITE_WS_URL } from "./config";
 
 class WebSocketService {
   private socket: Socket | null = null;
@@ -11,7 +11,9 @@ class WebSocketService {
       return;
     }
 
-    const baseUrl = VITE_API_URL || "http://localhost:5000";
+    const baseUrl = VITE_WS_URL || "http://localhost:5000";
+
+    console.log("🔌 Connecting to WebSocket:", baseUrl);
 
     this.socket = io(baseUrl, {
       auth: {
@@ -21,6 +23,9 @@ class WebSocketService {
         token,
       },
       transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
     });
 
     this.socket.on("connect", () => {
