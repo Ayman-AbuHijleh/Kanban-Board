@@ -1,0 +1,36 @@
+2026-11-28 11:36:57 - [INFO] - app_logger - User registered: new@example.com
+2026-11-28 11:36:58 - [INFO] - app_logger - User registered: duplicate@example.com
+2026-11-28 11:36:58 - [INFO] - app_logger - User logged in: login@example.com
+2026-11-28 11:36:58 - [INFO] - app_logger - Board created: Sprint by b8739dee24874b748d777842780744bd@example.com
+2026-11-28 11:36:59 - [INFO] - app_logger - Board updated: Renamed
+2026-11-28 11:36:59 - [INFO] - app_logger - Board deleted: Renamed
+2026-11-28 11:36:59 - [INFO] - app_logger - Member invited to board: invitee@example.com
+2026-11-28 11:36:59 - [INFO] - app_logger - Card created: Implement API
+2026-11-28 11:36:59 - [INFO] - app_logger - Card updated: 41c9302a-52ee-4e65-b171-eb78e6c74e3b
+2026-11-28 11:37:00 - [INFO] - app_logger - Card deleted: ab849e0a-b6f7-4a2a-8143-f21dc1716814
+2026-11-28 11:37:00 - [INFO] - app_logger - Label created: Bug for board Test Board
+2026-11-28 11:37:00 - [INFO] - app_logger - Label Bug added to card Test Card
+2026-11-28 11:37:00 - [INFO] - app_logger - Comment created on card 9ff2a985-61a0-4202-9aaa-3984e59e83e9 by user 6fd58b8d-1f04-4a15-a314-76958ff91629
+2026-11-28 11:37:00 - [INFO] - app_logger - Comment cc0eba78-6ad7-4d88-aaa6-fff83ea1de48 deleted from card 9ff2a985-61a0-4202-9aaa-3984e59e83e9
+2026-11-28 11:37:01 - [INFO] - app_logger - List created: Third
+2026-11-28 11:37:01 - [INFO] - app_logger - List updated: 77da3c60-8c45-46ff-9d0e-09b637d5736c
+2026-11-28 11:37:01 - [INFO] - app_logger - List moved: 5b889aff-4a9d-4798-b302-261e84a6e8d6 to position 0
+2026-11-28 11:37:01 - [INFO] - app_logger - List deleted: 77da3c60-8c45-46ff-9d0e-09b637d5736c
+2026-11-28 11:37:44 - [INFO] - app_logger - User registered: new@example.com
+2026-11-28 11:37:44 - [INFO] - app_logger - User registered: duplicate@example.com
+2026-11-28 11:37:44 - [INFO] - app_logger - User logged in: login@example.com
+2026-11-28 11:37:45 - [INFO] - app_logger - Board created: Sprint by 11e77747968c4553a5fe58c9d7ecf8ad@example.com
+2026-11-28 11:37:45 - [INFO] - app_logger - Board updated: Renamed
+2026-11-28 11:37:45 - [INFO] - app_logger - Board deleted: Renamed
+2026-11-28 11:37:46 - [INFO] - app_logger - Member invited to board: invitee@example.com
+2026-11-28 11:37:46 - [INFO] - app_logger - Card created: Implement API
+2026-11-28 11:37:46 - [INFO] - app_logger - Card updated: 73c507e9-aa4a-4a32-a161-462fad9e82ee
+2026-11-28 11:37:46 - [INFO] - app_logger - Card deleted: d6167fb6-a501-4a4b-a09b-2232f07cb6d7
+2026-11-28 11:37:47 - [INFO] - app_logger - Label created: Bug for board Test Board
+2026-11-28 11:37:47 - [INFO] - app_logger - Label Bug added to card Test Card
+2026-11-28 11:37:47 - [INFO] - app_logger - Comment created on card fe744ce9-a550-4e84-89df-f39cff23c50e by user 7eded307-b5c2-4d98-8e7b-e0b7241ecd73
+2026-11-28 11:37:47 - [INFO] - app_logger - Comment b2525bc9-c9e0-45ca-9c8a-8e5186a64d03 deleted from card fe744ce9-a550-4e84-89df-f39cff23c50e
+2026-11-28 11:37:48 - [INFO] - app_logger - List created: Third
+2026-11-28 11:37:48 - [INFO] - app_logger - List updated: 6f3092dc-cde5-4c0c-8eb6-a70eaa2b62ba
+2026-11-28 11:37:48 - [INFO] - app_logger - List moved: 2ed08e94-46f1-404f-a09a-cec15f892765 to position 0
+2026-11-28 11:37:48 - [INFO] - app_logger - List deleted: 6f3092dc-cde5-4c0c-8eb6-a70eaa2b62ba
