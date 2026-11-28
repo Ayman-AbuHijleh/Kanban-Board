@@ -16,13 +16,11 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     Base.metadata.create_all(engine)
-    
     # Initialize CORS before SocketIO
     CORS(app, resources={r"/*": {"origins": "*"}})
     
     init_cache(app)
     limiter.init_app(app)
-    
     # Initialize SocketIO after CORS
     # In production, Gunicorn with eventlet worker handles async_mode automatically
     socketio.init_app(
@@ -32,7 +30,6 @@ def create_app():
         engineio_logger=False,
         logger=False
     )
-
     #blueprint registeration
     app.register_blueprint(auth_bp, url_prefix='/api')
     app.register_blueprint(board_bp, url_prefix='/api')
@@ -44,9 +41,7 @@ def create_app():
     @app.errorhandler(Exception)
     def handle_general_error(err):
       return jsonify({"error": "Server Error", "message": str(err)}), 500
-
     return app
-
 
 if __name__ == "__main__":
     app = create_app()

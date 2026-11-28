@@ -14,7 +14,7 @@ def check_existing_user(session, email):
     return user is not None
 
 
-@with_db_session
+@with_db_session    
 def signup(session):
     """Register a new user"""
     schema = SignupSchema()
